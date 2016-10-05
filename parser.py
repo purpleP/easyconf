@@ -1,5 +1,15 @@
+import json
 from argparse import ArgumentParser
+from collections import namedtuple
+from itertools import chain
 from split import groupby
+
+
+Arguments = namedtuple('Arguments', 'type nargs name required help')
+
+
+def arguments(type=None, nargs=None, name=None, help='', required=False):
+    return Arguments(type, nargs, name, required, help)
 
 
 def flat_namespace_to_dict(namespace):
@@ -19,32 +29,55 @@ def make_dict(*paths):
     }
 
 
-def make_argparser(schema):
-    parser = ArgumentParser(description=schema.get('description', ''))
-    required = set(schema['required'])
-    (
-        
-        for name, property in schema['properties'].items()
+# def make_argparser(schema):
+#     parser = ArgumentParser(description=schema.get('description', ''))
+#     required = set(schema['required'])
+#     (
+#         for name, property in schema['properties'].items()
+#     )
+
+def schema_to_kwargs(schema, name, required):
+    kwargs = {**common_kwargs(schema, name, required), **specific_kwargs(schema)}
+    args = arguments(**kwargs)
+    flattened_dict_args = ()
+    if schema['type'] == 'object':
+        required = set(schema.get('required', ()))
+        flattened_dict_args = chain.from_iterable(
+            schema_to_kwargs(pschema, '.'.join((name, pname)), pname in required)
+            for pname, pschema in schema['properties'].items()
+        )
+    return chain((args,), flattened_dict_args)
+    
+
+
+def specific_kwargs(schema):
+    kwargs = {}
+    type = schema['type']
+    if type == 'array':
+        if len(schema['items']) > 1:
+            raise Exception(
+                'Easyconf doesn\'t support array with tuple validation.\n{}'.format(schema)
+            )
+        kwargs['type'] = jsonschema_types[schema['items'][0]['type']]
+        kwargs['nargs'] = '+'
+    elif type == 'object':
+        kwargs['type'] = json.loads
+    else:
+        kwargs['type'] = jsonschema_types[type]
+    return kwargs
+
+
+def common_kwargs(schema, name, required):
+    return dict(
+        required=required,
+        name=name,
+        help=schema.get('description', ''),
     )
 
-property_to_argument = {
+jsonschema_types = {
     'integer': int,
     'number': float,
     'boolean': bool,
+    'string': str,
+    'object': json.loads,
 }
-
-
-def to_argument(property, required):
-    type = property['type']
-    if type != 'object'
-        keywords = {'name': property['name']}
-        if required:
-            keywords['required'] = True
-        keywords['type'] = jsonschema_type_to_python[type]
-    return {}
-
-
-class Properties:
-    @staticmethod
-    def integer(property):
-        {'type': int}
