@@ -13,7 +13,11 @@ def arguments(type=None, nargs=None, name=None, help='', required=False):
 
 
 def flat_namespace_to_dict(namespace):
-    splitted = ((tuple(key.split('.')), value) for key, value in namespace)
+    splitted = (
+        (tuple(k.split('.')), v)
+        for k, v in vars(namespace).items()
+        if v is not None
+    )
     return make_dict(*splitted)
 
 
@@ -29,12 +33,16 @@ def make_dict(*paths):
     }
 
 
-# def make_argparser(schema):
-#     parser = ArgumentParser(description=schema.get('description', ''))
-#     required = set(schema['required'])
-#     (
-#         for name, property in schema['properties'].items()
-#     )
+def make_argparser(schema):
+    parser = ArgumentParser(description=schema.get('description', ''))
+    for kwargs in schema_to_kwargs(schema, name='conf', required=False):
+        kw = kwargs._asdict()
+        name = kw.pop('name')
+        if not kw['required']:
+            del kw['required']
+        parser.add_argument(name, **{k: v for k, v in kw.items() if v is not None})
+    return parser
+
 
 def schema_to_kwargs(schema, name, required):
     kwargs = {**common_kwargs(schema, name, required), **specific_kwargs(schema)}
@@ -70,7 +78,7 @@ def specific_kwargs(schema):
 def common_kwargs(schema, name, required):
     return dict(
         required=required,
-        name=name,
+        name='--' + name,
         help=schema.get('description', ''),
     )
 
