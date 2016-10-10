@@ -1,4 +1,5 @@
 import json
+from collections import Mapping
 from argparse import ArgumentParser
 from collections import namedtuple
 from itertools import chain
@@ -12,26 +13,40 @@ def arguments(type=None, nargs=None, name=None, help='', required=False):
     return Arguments(type, nargs, name, required, help)
 
 
-def flat_namespace_to_dict(namespace):
-    splitted = (
-        (tuple(k.split('.')), v)
-        for k, v in vars(namespace).items()
-        if v is not None
+def paths_from_namespace(namespace):
+    return (
+        (k.split('.'), v)
+        for k, v in vars(namespace).items() if v is not None
     )
-    return make_dict(*splitted)
 
 
-def make_dict(*paths):
+def namespace_to_dict(namespace):
+    return dict_from_paths(*paths_from_namespace(namespace))
+
+
+def dict_from_paths(*paths):
     def new_path(path):
         (key, *rest), value = path
         return rest, value
     if len(paths) == 1 and len(paths[0][0]) == 0:
         return paths[0][1]
     return {
-        key: make_dict(*map(new_path, remaining_paths))
+        key: dict_from_paths(*map(new_path, remaining_paths))
         for key, remaining_paths in groupby(lambda ks: ks[0][0], paths)
     }
 
+
+def chain_path(key, path):
+    return chain((key,), path[0]), path[1]
+
+
+def paths_from_dict(dct):
+    def make_path(k, v):
+        if isinstance(v, Mapping):
+            map(partial(chain_path, k), paths_frm_dict(v))
+        else:
+            ((key,), v)
+    return (make_path(k, v) for k, v in dct.items())
 
 def make_argparser(schema):
     parser = ArgumentParser(description=schema.get('description', ''))
