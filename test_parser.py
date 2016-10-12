@@ -3,7 +3,7 @@ import pytest
 from parser import dict_from_paths
 from parser import schema_to_kwargs
 from parser import common_kwargs
-from parser import arguments
+from frozendict import frozendict
 
 
 def test_make_dict():
@@ -43,8 +43,10 @@ def test_schema_to_kwargs():
         }
     }
     expected_kwargs = {
-        arguments(type=json.loads, name='--n', nargs=None),
-        arguments(type=int, name='--n.p0', nargs=None),
-        arguments(type=int, name='--n.p1', nargs='+'),
+        frozendict(type=json.loads, help='', name='--n'),
+        frozendict(type=int, help='', name='--n.p0'),
+        frozendict(type=int, help='', name='--n.p1', nargs='+'),
     }
-    assert expected_kwargs == set(schema_to_kwargs(schema, name='n', required=False))
+    assert expected_kwargs == set(
+        map(frozendict, schema_to_kwargs(schema, name='n', required=False))
+    )

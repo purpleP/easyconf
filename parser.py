@@ -3,25 +3,27 @@ from collections import Mapping
 from argparse import ArgumentParser
 from collections import namedtuple
 from itertools import chain
+from more_functools import merge
 from split import groupby
 
 
-Arguments = namedtuple('Arguments', 'type nargs name required help')
+def parse_args(schema):
+    namespace = make_argparser(schema).parse_args()
+    return namespace_to_dict(namespace)
 
 
-def arguments(type=None, nargs=None, name=None, help='', required=False):
-    return Arguments(type, nargs, name, required, help)
-
-
-def paths_from_namespace(namespace):
+def paths_from_namespace(namespace_dict):
     return (
         (k.split('.'), v)
-        for k, v in vars(namespace).items() if v is not None
+        for k, v in namespace_dict.items() if v is not None
     )
 
 
 def namespace_to_dict(namespace):
-    return dict_from_paths(*paths_from_namespace(namespace))
+    namespace_dict = vars(namespace)
+    defaults = namespace_dict.pop('conf', {})
+    conf = dict_from_paths(*paths_from_namespace(namespace_dict))['conf']
+    return merge(defaults, conf)
 
 
 def dict_from_paths(*paths):
@@ -48,20 +50,17 @@ def paths_from_dict(dct):
             ((key,), v)
     return (make_path(k, v) for k, v in dct.items())
 
+
 def make_argparser(schema):
     parser = ArgumentParser(description=schema.get('description', ''))
     for kwargs in schema_to_kwargs(schema, name='conf', required=False):
-        kw = kwargs._asdict()
-        name = kw.pop('name')
-        if not kw['required']:
-            del kw['required']
-        parser.add_argument(name, **{k: v for k, v in kw.items() if v is not None})
+        name = kwargs.pop('name')
+        parser.add_argument(name, **kwargs)
     return parser
 
 
 def schema_to_kwargs(schema, name, required):
     kwargs = {**common_kwargs(schema, name, required), **specific_kwargs(schema)}
-    args = arguments(**kwargs)
     flattened_dict_args = ()
     if schema['type'] == 'object':
         required = set(schema.get('required', ()))
@@ -69,7 +68,7 @@ def schema_to_kwargs(schema, name, required):
             schema_to_kwargs(pschema, '.'.join((name, pname)), pname in required)
             for pname, pschema in schema['properties'].items()
         )
-    return chain((args,), flattened_dict_args)
+    return chain((kwargs,), flattened_dict_args)
     
 
 
@@ -91,11 +90,13 @@ def specific_kwargs(schema):
 
 
 def common_kwargs(schema, name, required):
-    return dict(
-        required=required,
+    result = dict(
         name='--' + name,
         help=schema.get('description', ''),
     )
+    if required:
+        result['required'] = True
+    return result
 
 jsonschema_types = {
     'integer': int,
