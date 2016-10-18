@@ -4,12 +4,15 @@ from argparse import ArgumentParser
 from collections import namedtuple
 from itertools import chain
 from more_functools import merge
+from jsonschema import validate
 from split import groupby
 
 
 def parse_args(schema):
     namespace = make_argparser(schema).parse_args()
-    return namespace_to_dict(namespace)
+    conf = namespace_to_dict(namespace)
+    validate(conf, schema)
+    return conf
 
 
 def paths_from_namespace(namespace_dict):
