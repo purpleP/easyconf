@@ -7,7 +7,7 @@ setup(
     author='Michael Doronin',
     author_email='warrior2031@mail.com',
     install_requires=['jsonschema', 'more_functools', 'split'],
-    py_modules=['parser'],
+    py_modules=['easyconf'],
     license='MIT',
     classifiers=(
         'Programming Language :: Python :: 3.5',
