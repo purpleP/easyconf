@@ -1,8 +1,8 @@
 import json
 import pytest
-from parser import dict_from_paths
-from parser import schema_to_kwargs
-from parser import common_kwargs
+from easyconf import dict_from_paths
+from easyconf import schema_to_kwargs
+from easyconf import common_kwargs
 from frozendict import frozendict
 
 
@@ -24,8 +24,8 @@ def test_make_dict():
 
 def test_common_kwargs():
     schema = {'description': 'd'}
-    expected_kwargs = {'required': True, 'name': '--t', 'help': 'd'}
-    assert expected_kwargs == common_kwargs(schema, name='t', required=True)
+    expected_kwargs = {'name': '--t', 'help': 'd'}
+    assert expected_kwargs == common_kwargs(schema, name='t')
 
 
 def test_schema_to_kwargs():
@@ -48,5 +48,5 @@ def test_schema_to_kwargs():
         frozendict(type=int, help='', name='--n.p1', nargs='+'),
     }
     assert expected_kwargs == set(
-        map(frozendict, schema_to_kwargs(schema, name='n', required=False))
+        map(frozendict, schema_to_kwargs(schema, name='n'))
     )

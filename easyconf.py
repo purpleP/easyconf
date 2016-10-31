@@ -24,7 +24,7 @@ def paths_from_namespace(namespace_dict):
 
 def namespace_to_dict(namespace):
     namespace_dict = vars(namespace)
-    defaults = namespace_dict.pop('conf', {})
+    defaults = namespace_dict.pop('conf') or {}
     conf = dict_from_paths(*paths_from_namespace(namespace_dict))['conf']
     return merge(defaults, conf)
 
@@ -56,19 +56,18 @@ def paths_from_dict(dct):
 
 def make_argparser(schema):
     parser = ArgumentParser(description=schema.get('description', ''))
-    for kwargs in schema_to_kwargs(schema, name='conf', required=False):
+    for kwargs in schema_to_kwargs(schema, name='conf'):
         name = kwargs.pop('name')
         parser.add_argument(name, **kwargs)
     return parser
 
 
-def schema_to_kwargs(schema, name, required):
-    kwargs = {**common_kwargs(schema, name, required), **specific_kwargs(schema)}
+def schema_to_kwargs(schema, name):
+    kwargs = {**common_kwargs(schema, name), **specific_kwargs(schema)}
     flattened_dict_args = ()
     if schema['type'] == 'object':
-        required = set(schema.get('required', ()))
         flattened_dict_args = chain.from_iterable(
-            schema_to_kwargs(pschema, '.'.join((name, pname)), pname in required)
+            schema_to_kwargs(pschema, '.'.join((name, pname)))
             for pname, pschema in schema['properties'].items()
         )
     return chain((kwargs,), flattened_dict_args)
@@ -92,13 +91,11 @@ def specific_kwargs(schema):
     return kwargs
 
 
-def common_kwargs(schema, name, required):
+def common_kwargs(schema, name):
     result = dict(
         name='--' + name,
         help=schema.get('description', ''),
     )
-    if required:
-        result['required'] = True
     return result
 
 jsonschema_types = {
