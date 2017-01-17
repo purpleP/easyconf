@@ -37,7 +37,7 @@ def dict_from_paths(*paths):
         return paths[0][1]
     return {
         key: dict_from_paths(*map(new_path, remaining_paths))
-        for key, remaining_paths in groupby(lambda ks: ks[0][0], paths)
+        for key, remaining_paths in groupby(paths, lambda ks: ks[0][0])
     }
 
 
