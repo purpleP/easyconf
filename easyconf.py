@@ -12,10 +12,10 @@ from split import groupby
 def parse_args(schema):
     namespace = make_argparser(schema).parse_args()
     config = namespace_to_dict(namespace)
-    validate(conf, schema)
+    validate(config, schema)
     import conf
     conf.conf = config
-    return conf
+    return config
 
 
 def paths_from_namespace(namespace_dict):
