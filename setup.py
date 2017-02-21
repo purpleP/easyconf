@@ -1,4 +1,5 @@
 from setuptools import setup
+from distutils.sysconfig import get_python_lib
 
 
 setup(
@@ -9,6 +10,9 @@ setup(
     install_requires=['jsonschema', 'more_functools', 'split>=1.0'],
     py_modules=['easyconf'],
     license='MIT',
+    data_files=[
+        (get_python_lib(), ['autoimport.pth'])
+    ],
     classifiers=(
         'Programming Language :: Python :: 3.5',
     ),

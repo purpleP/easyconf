@@ -1,17 +1,22 @@
 import json
-from collections import Mapping
+import sys
+import types
 from argparse import ArgumentParser
-from collections import namedtuple
+from collections import Mapping, namedtuple
 from itertools import chain
-from more_functools import merge
+
 from jsonschema import validate
+from more_functools import merge
 from split import groupby
+
+import conf
 
 
 def parse_args(schema):
     namespace = make_argparser(schema).parse_args()
-    conf = namespace_to_dict(namespace)
+    config = namespace_to_dict(namespace)
     validate(conf, schema)
+    conf.conf = config
     return conf
 
 
@@ -98,6 +103,7 @@ def common_kwargs(schema, name):
     )
     return result
 
+
 jsonschema_types = {
     'integer': int,
     'number': float,
@@ -105,3 +111,23 @@ jsonschema_types = {
     'string': str,
     'object': json.loads,
 }
+
+
+class CustomLoader:
+    name = 'conf'
+
+    def find_module(self, fullname, path):
+        return self if fullname == self.name else None
+
+    def load_module(self, fullname):
+        module = sys.modules.get(fullname)
+        if module:
+            return module
+        if fullname != self.name:
+            raise ImportError(fullname)
+        sys.modules[fullname] = ConfigModule(None)
+        return sys.modules[fullname]
+
+class ConfigModule(types.ModuleType):
+    def __init__(self, conf=None):
+        self.conf = conf
