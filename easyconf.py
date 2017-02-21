@@ -9,13 +9,11 @@ from jsonschema import validate
 from more_functools import merge
 from split import groupby
 
-import conf
-
-
 def parse_args(schema):
     namespace = make_argparser(schema).parse_args()
     config = namespace_to_dict(namespace)
     validate(conf, schema)
+    import conf
     conf.conf = config
     return conf
 
