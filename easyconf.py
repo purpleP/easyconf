@@ -4,10 +4,12 @@ import types
 from argparse import ArgumentParser
 from collections import Mapping, namedtuple
 from itertools import chain
+from functools import partial
 
 from jsonschema import validate
 from more_functools import merge
 from split import groupby
+
 
 def parse_args(schema):
     namespace = make_argparser(schema).parse_args()
@@ -74,7 +76,6 @@ def schema_to_kwargs(schema, name):
             for pname, pschema in schema['properties'].items()
         )
     return chain((kwargs,), flattened_dict_args)
-    
 
 
 def specific_kwargs(schema):
@@ -89,6 +90,8 @@ def specific_kwargs(schema):
         kwargs['nargs'] = '+'
     elif type == 'object':
         kwargs['type'] = json.loads
+    elif type == 'boolean':
+        kwargs['action'] = 'store_true'
     else:
         kwargs['type'] = jsonschema_types[type]
     return kwargs
