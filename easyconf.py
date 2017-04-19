@@ -1,10 +1,8 @@
 import json
 import sys
 import types
-from collections import Mapping, namedtuple, deque, Iterable
-from itertools import chain, takewhile, dropwhile
-from functools import partial
-from operator import itemgetter
+from collections import Mapping, deque, Iterable
+from itertools import chain, takewhile
 
 from jsonschema import validate
 from more_functools import concat
@@ -40,23 +38,31 @@ class Buffered:
             raise
 
 
+def parse_args(conf_schema):
+    schema = {'type': 'object', 'properties': {'conf': conf_schema}}
+    config = make_value(schema, make_paths(sys.argv))['conf']
+    validate(config, conf_schema)
+    import conf
+    conf.conf = config
+    return config
+
+
 def merge(fst, snd, *other):
     basetype = next((t for t in (Mapping, Iterable) if isinstance(fst, t)), None)
     if not basetype:
         raise ValueError('Can merge only iterables or mappings')
-    if not all(isinstance(v, basetype) for v in other):
+    elif not all(isinstance(v, basetype) for v in other):
         raise ValueError('Can merge only values of the same basetype')
-    if basetype is Iterable:
+    elif basetype is Iterable:
         return list(concat(fst, snd, *other))
-    else:
-        key_values = (
-            concat([k], (d[k] for d in (fst, snd) + other if k in d))
-            for k in set(chain(fst, snd, *other))
-        )
-        return {
-            k: merge(val, *values) if values else val
-            for k, val, *values in key_values
-        }
+    key_values = (
+        concat([k], (d[k] for d in (fst, snd) + other if k in d))
+        for k in set(chain(fst, snd, *other))
+    )
+    return {
+        k: merge(val, *values) if values else val
+        for k, val, *values in key_values
+    }
 
 
 def make_paths(args):
@@ -73,18 +79,18 @@ def make_value(schema, paths):
     def by_start(args):
         path, values = args
         return path[0]
-    by_path_start = groupby(paths, by_start)
     def is_basecase(args):
         path, values = args
         return len(path) == 0
     by_path_start = {
-        start: tuple(map(tuple, partition(is_basecase, tuple((path[1:], vs) for path, vs in values))))
-        for start, values in by_path_start
+        start: tuple(map(tuple, partition(is_basecase, ((path[1:], vs) for path, vs in values))))
+        for start, values in groupby(paths, by_start)
     }
     def make_val(key, schema):
+        basecases, nonbasecases = by_path_start[key]
         all_values = concat(
-            (transform(schema, *values) for _, values in by_path_start[key][0]),
-            (make_value(schema, by_path_start[key][1]),) if by_path_start[key][1] else ()
+            (transform(schema, *values) for _, values in basecases),
+            (make_value(schema, by_path_start[key][1]),) if nonbasecases else ()
         )
         all_values = tuple(all_values)
         if len(all_values) > 1:
