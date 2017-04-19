@@ -96,11 +96,21 @@ def make_value(schema, paths):
         if len(all_values) > 1:
             return merge(*all_values)
         return all_values[0]
-    return {
-        key: make_val(key, subschema)
-        for key, subschema in schema['properties'].items()
+    props = schema.get('properties', {})
+    properties = (
+        (key, make_val(key, subschema))
+        for key, subschema in props.items()
         if key in by_path_start
-    }
+    )
+    additional_props = schema.get('additionalPoperties', False)
+    if additional_props:
+        additional_properties = (
+            (key, make_val(key, additional_props))
+            for key in by_path_start.keys() - props.keys()
+        )
+        propeties = concat(properties, additional_props)
+    return {key: value for key, value in properties}
+
 
 
 def transform(schema, value, *values):
@@ -109,6 +119,8 @@ def transform(schema, value, *values):
             raise ValueError(f'Too many arguments passed {value} {values}')
         return transformers[schema['type']](value)
     if isinstance(schema['items'], dict):
+        if schema['items']['type'] == 'object' and not values:
+            return json.loads(value)
         return [transform(schema['items'], v) for v in (value,) + values]
     return [
         transform(schema, value)

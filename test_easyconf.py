@@ -51,6 +51,14 @@ def test_make_value():
                 },
             },
             'c': {'type': 'integer'},
+            'd': {
+                'type': 'array',
+                'items': {'type': 'object', 'properties': {'a': {'type': 'integer'}}}
+            },
+            'e': {
+                'type': 'object',
+                'additionalProperties': {'type': 'integer'},
+            },
         },
     }
     schema = {'type': 'object', 'properties': {'conf': conf_schema}}
@@ -61,7 +69,9 @@ def test_make_value():
         '--conf.b.c', '3',
         '--conf.b.d', '4',
         '--conf.c', '4',
+        '--conf.d', json.dumps([{'a': 1}]),
+        '--conf.e', json.dumps({'a': 1}),
     )
-    expected = {'a': [1, 2], 'b': {'c': [2, 3], 'd': [3, 4]}, 'c': 4}
+    expected = dict(a=[1, 2], b=dict(c=[2, 3], d=[3, 4]), c=4, d=[{'a': 1}], e={'a': 1})
     paths = tuple(make_paths(args))
     assert {'conf': expected} == make_value(schema, paths)
