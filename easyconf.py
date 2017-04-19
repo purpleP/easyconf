@@ -1,13 +1,14 @@
 import json
 import sys
 import types
-from argparse import ArgumentParser
-from collections import Mapping, namedtuple, deque
-from itertools import chain, takewhile
+from collections import Mapping, namedtuple, deque, Iterable
+from itertools import chain, takewhile, dropwhile
 from functools import partial
+from operator import itemgetter
 
 from jsonschema import validate
-from more_functools import merge
+from more_functools import concat
+from split import groupby, partition
 
 
 class Buffered:
@@ -38,115 +39,78 @@ class Buffered:
             self.ended = True
             raise
 
-def group_by_argname(args):
+
+def merge(fst, snd, *other):
+    basetype = next((t for t in (Mapping, Iterable) if isinstance(fst, t)), None)
+    if not basetype:
+        raise ValueError('Can merge only iterables or mappings')
+    if not all(isinstance(v, basetype) for v in other):
+        raise ValueError('Can merge only values of the same basetype')
+    if basetype is Iterable:
+        return list(concat(fst, snd, *other))
+    else:
+        key_values = (
+            concat([k], (d[k] for d in (fst, snd) + other if k in d))
+            for k in set(chain(fst, snd, *other))
+        )
+        return {
+            k: merge(val, *values) if values else val
+            for k, val, *values in key_values
+        }
+
+
+def make_paths(args):
+    def is_not_argname(arg):
+        return not arg.startswith('--')
     iargs = Buffered(args, 1)
     for arg in iargs:
-        if arg.startswith('--conf.'):
-            yield arg[7:], takewhile(lambda a: not a.startswith('--conf'), iargs)
-            iargs.from_buffer = True
+        if is_not_argname(arg):
+            continue
+        yield arg.strip('--').split('.'), list(takewhile(is_not_argname, iargs))
+        iargs.from_buffer = True
 
-
-def make_dict(schema, args):
-    groups = group_by_argname(args)
+def make_value(schema, paths):
+    def by_start(args):
+        path, values = args
+        return path[0]
+    by_path_start = groupby(paths, by_start)
+    def is_basecase(args):
+        path, values = args
+        return len(path) == 0
+    by_path_start = {
+        start: tuple(map(tuple, partition(is_basecase, tuple((path[1:], vs) for path, vs in values))))
+        for start, values in by_path_start
+    }
+    def make_val(key, schema):
+        all_values = concat(
+            (transform(schema, *values) for _, values in by_path_start[key][0]),
+            (make_value(schema, by_path_start[key][1]),) if by_path_start[key][1] else ()
+        )
+        all_values = tuple(all_values)
+        if len(all_values) > 1:
+            return merge(*all_values)
+        return all_values[0]
     return {
-        key: make_value(key, subschema, groups)
+        key: make_val(key, subschema)
         for key, subschema in schema['properties'].items()
+        if key in by_path_start
     }
 
 
-def make_value(key, schema, groups):
-    groups_for_key = tuple(
-        (argname, values)
-        for argname, values if argname.startswith(key + '.') == key
-    )
+def transform(schema, value, *values):
+    if schema['type'] in transformers:
+        if values:
+            raise ValueError(f'Too many arguments passed {value} {values}')
+        return transformers[schema['type']](value)
+    if isinstance(schema['items'], dict):
+        return [transform(schema['items'], v) for v in (value,) + values]
+    return [
+        transform(schema, value)
+        for schema, value in zip(schema['items'], (value,) + values)
+    ]
 
 
-# def paths_from_namespace(namespace_dict):
-#     return (
-#         (k.split('.'), v)
-#         for k, v in namespace_dict.items() if v is not None
-#     )
-
-
-# def namespace_to_dict(namespace):
-#     namespace_dict = vars(namespace)
-#     defaults = namespace_dict.pop('conf') or {}
-#     conf = dict_from_paths(*paths_from_namespace(namespace_dict))['conf']
-#     return merge(defaults, conf)
-
-
-# def dict_from_paths(*paths):
-#     def new_path(path):
-#         (key, *rest), value = path
-#         return rest, value
-#     if len(paths) == 1 and len(paths[0][0]) == 0:
-#         return paths[0][1]
-#     return {
-#         key: dict_from_paths(*map(new_path, remaining_paths))
-#         for key, remaining_paths in groupby(paths, lambda ks: ks[0][0])
-#     }
-
-
-# def chain_path(key, path):
-#     return chain((key,), path[0]), path[1]
-
-
-# def paths_from_dict(dct):
-#     def make_path(k, v):
-#         if isinstance(v, Mapping):
-#             map(partial(chain_path, k), paths_frm_dict(v))
-#         else:
-#             ((key,), v)
-#     return (make_path(k, v) for k, v in dct.items())
-
-
-# def make_argparser(schema):
-#     parser = ArgumentParser(description=schema.get('description', ''))
-#     for kwargs in schema_to_kwargs(schema, name='conf'):
-#         name = kwargs.pop('name')
-#         parser.add_argument(name, **kwargs)
-#     return parser
-
-
-# def schema_to_kwargs(schema, name):
-#     kwargs = {**common_kwargs(schema, name), **specific_kwargs(schema)}
-#     flattened_dict_args = ()
-#     if schema['type'] == 'object':
-#         flattened_dict_args = chain.from_iterable(
-#             schema_to_kwargs(pschema, '.'.join((name, pname)))
-#             for pname, pschema in schema['properties'].items()
-#         )
-#     return chain((kwargs,), flattened_dict_args)
-
-
-# def specific_kwargs(schema):
-#     kwargs = {}
-#     type = schema['type']
-#     if type == 'array':
-#         if len(schema['items']) > 1:
-#             raise Exception(
-#                 'Easyconf doesn\'t support array with tuple validation.\n{}'.format(schema)
-#             )
-#         kwargs['type'] = jsonschema_types[schema['items'][0]['type']]
-#         kwargs['nargs'] = '+'
-#     elif type == 'object':
-#         kwargs['type'] = json.loads
-#     elif type == 'boolean':
-#         kwargs['action'] = 'store_true'
-#     else:
-#         kwargs['type'] = jsonschema_types[type]
-#     return kwargs
-
-
-# def common_kwargs(schema, name):
-#     result = dict(
-#         name='--' + name,
-#         help=schema.get('description', ''),
-#     )
-#     return result
-
-
-jsonschema_types = {
+transformers = {
     'integer': int,
     'number': float,
     'boolean': bool,
