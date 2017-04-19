@@ -89,7 +89,7 @@ def make_value(schema, paths):
     def make_val(key, schema):
         basecases, nonbasecases = by_path_start[key]
         all_values = concat(
-            (transform(schema, *values) for _, values in basecases),
+            (transform(schema, values) for _, values in basecases),
             (make_value(schema, by_path_start[key][1]),) if nonbasecases else ()
         )
         all_values = tuple(all_values)
@@ -113,25 +113,25 @@ def make_value(schema, paths):
 
 
 
-def transform(schema, value, *values):
+def transform(schema, values):
     if schema['type'] in transformers:
-        if values:
-            raise ValueError(f'Too many arguments passed {value} {values}')
-        return transformers[schema['type']](value)
+        if len(values) > 1:
+            raise ValueError(f'Too many arguments passed {values}')
+        return transformers[schema['type']](*values)
     if isinstance(schema['items'], dict):
-        if schema['items']['type'] == 'object' and not values:
-            return json.loads(value)
-        return [transform(schema['items'], v) for v in (value,) + values]
+        if schema['items']['type'] == 'object' and len(values) == 1:
+            return json.loads(values[0])
+        return [transform(schema['items'], v) for v in values]
     return [
         transform(schema, value)
-        for schema, value in zip(schema['items'], (value,) + values)
+        for schema, value in zip(schema['items'], values)
     ]
 
 
 transformers = {
     'integer': int,
     'number': float,
-    'boolean': bool,
+    'boolean': lambda *args: True,
     'string': str,
     'object': json.loads,
 }
