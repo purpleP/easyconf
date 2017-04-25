@@ -122,7 +122,6 @@ def make_value(schema, paths):
     return {key: value for key, value in properties}
 
 
-
 def transform(schema, values):
     if schema['type'] in transformers:
         if len(values) > 1:
@@ -161,6 +160,7 @@ class CustomLoader:
             raise ImportError(fullname)
         sys.modules[fullname] = ConfigModule(None)
         return sys.modules[fullname]
+
 
 class ConfigModule(types.ModuleType):
     def __init__(self, conf=None):
