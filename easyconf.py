@@ -1,6 +1,7 @@
 import json
 import sys
 import types
+import os
 from collections import Mapping, deque, Iterable
 from itertools import chain, takewhile
 
@@ -38,7 +39,16 @@ class Buffered:
             raise
 
 
-def parse_args(conf_schema):
+def find_conf_schema():
+    script_dir = sys.path[0]
+    if script_dir == '':
+        raise Exception('Can\'t find conf_schema when sys.path == ""')
+    with open(os.path.join(script_dir, 'conf_schema.json'), 'r') as schema:
+        return json.load(schema)
+
+
+def parse_args(conf_schema=None):
+    conf_schema = conf_schema or find_conf_schema()
     schema = {'type': 'object', 'properties': {'conf': conf_schema}}
     config = make_value(schema, make_paths(sys.argv))['conf']
     validate(config, conf_schema)
