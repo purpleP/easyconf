@@ -1,12 +1,10 @@
 import json
 import sys
-import types
 import os
 from collections import Mapping, deque, Iterable
 from itertools import chain, takewhile
 
 from jsonschema import validate
-from more_functools import concat
 from split import groupby, partition
 
 
@@ -64,9 +62,9 @@ def merge(fst, snd, *other):
     elif not all(isinstance(v, basetype) for v in other):
         raise ValueError('Can merge only values of the same basetype')
     elif basetype is Iterable:
-        return list(concat(fst, snd, *other))
+        return list(chain(fst, snd, *other))
     key_values = (
-        concat([k], (d[k] for d in (fst, snd) + other if k in d))
+        chain([k], (d[k] for d in (fst, snd) + other if k in d))
         for k in set(chain(fst, snd, *other))
     )
     return {
@@ -98,7 +96,7 @@ def make_value(schema, paths):
     }
     def make_val(key, schema):
         basecases, nonbasecases = by_path_start[key]
-        all_values = concat(
+        all_values = chain(
             (transform(schema, values) for _, values in basecases),
             (make_value(schema, by_path_start[key][1]),) if nonbasecases else ()
         )
@@ -118,7 +116,7 @@ def make_value(schema, paths):
             (key, make_val(key, additional_props))
             for key in by_path_start.keys() - props.keys()
         )
-        propeties = concat(properties, additional_props)
+        properties = chain(properties, additional_properties)
     return {key: value for key, value in properties}
 
 
