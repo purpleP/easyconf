@@ -1,3 +1,6 @@
+import sys
+
+
 class CustomLoader:
     name = 'conf'
 
@@ -14,6 +17,6 @@ class CustomLoader:
         return sys.modules[fullname]
 
 
-class ConfigModule(types.ModuleType):
+class ConfigModule:
     def __init__(self, conf=None):
         self.conf = conf

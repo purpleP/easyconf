@@ -1,2 +1,2 @@
-import custom_loader
-import sys;sys.meta_path.append(custom_loader.CustomLoader())
+import config_loader
+import sys;sys.meta_path.append(config_loader.CustomLoader())
