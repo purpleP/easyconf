@@ -2,17 +2,7 @@ import json
 
 import pytest
 
-from easyconf import Buffered, make_value, make_paths, merge
-
-
-def test_buffered():
-    b = Buffered(iter(range(2)))
-    assert 0 == next(b)
-    b.from_buffer = True
-    assert 0 == next(b)
-    assert 1 == next(b)
-    with pytest.raises(StopIteration):
-        next(b)
+from easyconf import make_value, make_paths, merge
 
 
 @pytest.mark.parametrize(

@@ -2,39 +2,10 @@ import json
 import sys
 import os
 from collections import Mapping, deque, Iterable
-from itertools import chain, takewhile
+from itertools import chain, takewhile, islice
 
 from jsonschema import validate
-from split import groupby, partition
-
-
-class Buffered:
-    def __init__(self, sequence, size=1):
-        self.buffer = deque(maxlen=size)
-        self.sequence = iter(sequence)
-        self.from_buffer = False
-        self.ended = False
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.from_buffer:
-            try:
-                return self.buffer.popleft()
-            except IndexError:
-                if self.ended:
-                    raise StopIteration()
-                else:
-                    self.from_buffer = False
-                    return next(self)
-        try:
-            elem = next(self.sequence)
-            self.buffer.append(elem)
-            return elem
-        except StopIteration:
-            self.ended = True
-            raise
+from split import groupby, partition, split
 
 
 def find_conf_schema():
@@ -74,14 +45,13 @@ def merge(fst, snd, *other):
 
 
 def make_paths(args):
-    def is_not_argname(arg):
-        return not arg.startswith('--')
-    iargs = Buffered(args, 1)
-    for arg in iargs:
-        if is_not_argname(arg):
-            continue
-        yield arg.strip('--').split('.'), list(takewhile(is_not_argname, iargs))
-        iargs.from_buffer = True
+    return tuple(
+        (path.strip('--').split('.'), values)
+        for path, *values in islice(
+            split(lambda arg: arg.startswith('--'), args, keepdelims=True), 1, None
+        )
+    )
+
 
 def make_value(schema, paths):
     def by_start(args):
