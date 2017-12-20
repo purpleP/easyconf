@@ -111,4 +111,5 @@ transformers = {
     'boolean': lambda *args: True,
     'string': str,
     'object': json.loads,
+    'array': json.loads,
 }
