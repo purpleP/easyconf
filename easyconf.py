@@ -104,12 +104,19 @@ def transform(schema, values):
         for schema, value in zip(schema['items'], values)
     ]
 
+def json_from_string_or_file(string_or_file_path):
+    try:
+        return json.loads(string_or_file_path)
+    except json.JSONDecodeError:
+        with open(string_or_file_path, 'r') as f:
+            return json.load(f)
+
 
 transformers = {
     'integer': int,
     'number': float,
     'boolean': lambda *args: True,
     'string': str,
-    'object': json.loads,
-    'array': json.loads,
+    'object': json_from_string_or_file,
+    'array': json_from_string_or_file,
 }
