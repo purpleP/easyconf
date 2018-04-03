@@ -2,7 +2,7 @@ import json
 import sys
 import os
 from collections import Mapping, deque, Iterable
-from itertools import chain, takewhile, islice
+from itertools import chain, dropwhile, takewhile, islice, zip_longest
 
 from jsonschema import validate
 from split import groupby, partition, split
@@ -45,11 +45,11 @@ def merge(fst, snd, *other):
 
 
 def make_paths(args):
+    is_key = lambda arg: arg.startswith('--conf')
+    args = [*dropwhile(lambda arg: not is_key(arg), args)]
     return tuple(
-        (path.strip('--').split('.'), values)
-        for path, *values in islice(
-            split(lambda arg: arg.startswith('--'), args, keepdelims=True), 1, None
-        )
+        (path.strip('--').split('.'), tuple(values))
+        for path, values in zip_longest(filter(is_key, args), split(is_key, args), fillvalue=())
     )
 
 
@@ -91,10 +91,9 @@ def make_value(schema, paths):
 
 
 def transform(schema, values):
-    if schema['type'] in transformers:
-        if len(values) > 1:
-            raise ValueError(f'Too many arguments passed {values}')
-        return transformers[schema['type']](*values)
+    trans = transformers.get(schema['type'])
+    if trans:
+        return trans(*values)
     if isinstance(schema['items'], dict):
         if schema['items']['type'] == 'object' and len(values) == 1:
             return json.loads(values[0])

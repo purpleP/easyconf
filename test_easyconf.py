@@ -55,10 +55,10 @@ def test_make_value():
     schema = {'type': 'object', 'properties': {'conf': conf_schema}}
     args = (
         'some', '--not', 'confarg',
-        '--conf.a', '1', '2',
+        '--conf.a', json.dumps([1, 2]),
         '--conf.b', json.dumps({'c': [2], 'd': [3]}),
-        '--conf.b.c', '3',
-        '--conf.b.d', '4',
+        '--conf.b.c', '[3]',
+        '--conf.b.d', '[4]',
         '--conf.c', '4',
         '--conf.d', json.dumps([{'a': 1}]),
         '--conf.e', json.dumps({'a': 1}),
