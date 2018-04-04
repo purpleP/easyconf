@@ -3,9 +3,10 @@ import sys
 import os
 from collections import Mapping, deque, Iterable
 from itertools import chain, dropwhile, takewhile, islice, zip_longest
+from itertools import groupby as group
 
 from jsonschema import validate
-from split import groupby, partition, split
+from split import groupby, partition
 
 
 def find_conf_schema():
@@ -45,11 +46,15 @@ def merge(fst, snd, *other):
 
 
 def make_paths(args):
-    is_key = lambda arg: arg.startswith('--conf')
-    args = [*dropwhile(lambda arg: not is_key(arg), args)]
+    def key(arg):
+        if arg.startswith('--conf'):
+            key.key = arg
+            return arg
+        return key.key
+    key.key = None
     return tuple(
         (path.strip('--').split('.'), tuple(values))
-        for path, values in zip_longest(filter(is_key, args), split(is_key, args), fillvalue=())
+        for path, (_, *values) in group(args, key) if path is not None
     )
 
 
