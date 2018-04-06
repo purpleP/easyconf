@@ -63,6 +63,7 @@ def test_make_value():
         '--conf.d', json.dumps([{'a': 1}]),
         '--conf.e', json.dumps({'a': 1}),
         '--conf.f',
+        '-help'
     )
     expected = dict(a=[1, 2], b=dict(c=[2, 3], d=[3, 4]), c=4, d=[{'a': 1}], e={'a': 1}, f=True)
     paths = tuple(make_paths(args))

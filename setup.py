@@ -18,6 +18,6 @@ setup(
         'Programming Language :: Python :: 3.5',
     ),
     dependency_links=(
-        'https://bitbucket.org/warrior2031/python-split/get/tip.zip#egg=split-1.0',
+        'https://github.com/purpleP/python-split/archive/1.1.zip',
     ),
 )

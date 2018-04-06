@@ -47,14 +47,15 @@ def merge(fst, snd, *other):
 
 def make_paths(args):
     def key(arg):
-        if arg.startswith('--conf'):
+        if arg.startswith('-'):
             key.key = arg
             return arg
         return key.key
     key.key = None
     return tuple(
         (path.strip('--').split('.'), tuple(values))
-        for path, (_, *values) in group(args, key) if path is not None
+        for path, (_, *values) in group(args, key)
+        if path is not None and path.startswith('--conf')
     )
 
 
