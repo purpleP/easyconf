@@ -8,6 +8,8 @@ from itertools import groupby as group
 from jsonschema import validate
 from split import groupby, partition
 
+from config_loader import Dict
+
 
 def find_conf_schema():
     script_dir = sys.path[0]
@@ -23,7 +25,14 @@ def parse_args(conf_schema=None):
     config = make_value(schema, make_paths(sys.argv))['conf']
     validate(config, conf_schema)
     import conf
-    conf.conf = config
+    def to_Dict(v):
+        if isinstance(v, dict):
+            return Dict((k, to_Dict(v)) for k, v in v.items())
+        elif isinstance(v, list):
+            return [*map(to_Dict, v)]
+        else:
+            return v
+    conf.update(to_Dict(config))
     return config
 
 
@@ -73,7 +82,7 @@ def make_value(schema, paths):
     def make_val(key, schema):
         basecases, nonbasecases = by_path_start[key]
         all_values = chain(
-            (transform(schema, values) for _, values in basecases),
+            (transformers[schema['type']](*values) for _, values in basecases),
             (make_value(schema, by_path_start[key][1]),) if nonbasecases else ()
         )
         all_values = tuple(all_values)
@@ -93,21 +102,8 @@ def make_value(schema, paths):
             for key in by_path_start.keys() - props.keys()
         )
         properties = chain(properties, additional_properties)
-    return {key: value for key, value in properties}
+    return dict(properties)
 
-
-def transform(schema, values):
-    trans = transformers.get(schema['type'])
-    if trans:
-        return trans(*values)
-    if isinstance(schema['items'], dict):
-        if schema['items']['type'] == 'object' and len(values) == 1:
-            return json.loads(values[0])
-        return [transform(schema['items'], v) for v in values]
-    return [
-        transform(schema, value)
-        for schema, value in zip(schema['items'], values)
-    ]
 
 def json_from_string_or_file(string_or_file_path):
     try:
