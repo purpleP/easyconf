@@ -13,10 +13,13 @@ class CustomLoader:
             return module
         if fullname != self.name:
             raise ImportError(fullname)
-        sys.modules[fullname] = ConfigModule(None)
+        sys.modules[fullname] = Dict()
         return sys.modules[fullname]
 
 
-class ConfigModule:
-    def __init__(self, conf=None):
-        self.conf = conf
+class Dict(dict):
+    def __getattr__(self, attr):
+        try:
+            return self[attr]
+        except:
+            raise AttributeError(attr)

@@ -8,6 +8,8 @@ from itertools import groupby as group
 from jsonschema import validate
 from split import groupby, partition
 
+from config_loader import Dict
+
 
 def find_conf_schema():
     script_dir = sys.path[0]
@@ -23,7 +25,7 @@ def parse_args(conf_schema=None):
     config = make_value(schema, make_paths(sys.argv))['conf']
     validate(config, conf_schema)
     import conf
-    conf.conf = config
+    conf.update(config)
     return config
 
 
@@ -93,7 +95,7 @@ def make_value(schema, paths):
             for key in by_path_start.keys() - props.keys()
         )
         properties = chain(properties, additional_properties)
-    return {key: value for key, value in properties}
+    return Dict(properties)
 
 
 def transform(schema, values):
