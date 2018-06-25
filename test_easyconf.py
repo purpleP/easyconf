@@ -10,22 +10,12 @@ from easyconf import make_value, make_paths, merge
     (
         ([1], [2], [1, 2]),
         ({'a': 1}, {'b': 2}, {'a': 1, 'b': 2}),
+        pytest.param(1, 2, None, marks=pytest.mark.xfail(raises=ValueError)),
+        pytest.param({'a': 1}, {'a': 2}, None, marks=pytest.mark.xfail(raises=ValueError)),
     )
 )
 def test_merge(a, b, expected):
     assert expected == merge(a, b)
-
-
-@pytest.mark.parametrize(
-    'a,b,exc',
-    (
-        (1, 2, ValueError),
-        ({'a': 1}, {'a': 2}, ValueError),
-    )
-)
-def test_merge_exceptions(a, b, exc):
-    with pytest.raises(exc):
-        merge(a, b)
 
 
 def test_make_value():
