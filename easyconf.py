@@ -45,7 +45,7 @@ def merge(fst, snd=None, *other):
     if not all(type(arg) == fst_type for arg in (snd, *other)):
         raise ValueError('Can merge only values of the same basetype')
     if fst_type == list:
-        return list(chain(fst, snd, *other))
+        return [fst, snd, *other]
     if fst_type != dict:
         raise ValueError(
             f'Can merge only iterables or mappings not {(fst, snd, *other)}'
