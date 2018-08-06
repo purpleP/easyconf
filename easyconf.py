@@ -1,9 +1,11 @@
 import json
 import sys
 import os
-from collections import Mapping, deque, Iterable
+
+from collections import deque
 from itertools import chain, dropwhile, takewhile, islice, zip_longest
 from itertools import groupby as group
+from operator import itemgetter
 
 from jsonschema import validate
 from split import groupby, partition
@@ -36,21 +38,24 @@ def parse_args(conf_schema=None):
     return config
 
 
-def merge(fst, snd, *other):
-    basetype = next((t for t in (Mapping, Iterable) if isinstance(fst, t)), None)
-    if not basetype:
-        raise ValueError('Can merge only iterables or mappings')
-    elif not all(isinstance(v, basetype) for v in other):
+def merge(fst, snd=None, *other):
+    if not snd:
+        return fst
+    fst_type = type(fst)
+    if not all(type(arg) == fst_type for arg in (snd, *other)):
         raise ValueError('Can merge only values of the same basetype')
-    elif basetype is Iterable:
+    if fst_type == list:
         return list(chain(fst, snd, *other))
-    key_values = (
-        chain([k], (d[k] for d in (fst, snd) + other if k in d))
-        for k in set(chain(fst, snd, *other))
-    )
+    if fst_type != dict:
+        raise ValueError(
+            f'Can merge only iterables or mappings not {(fst, snd, *other)}'
+        )
     return {
-        k: merge(val, *values) if values else val
-        for k, val, *values in key_values
+        k: merge(*(map(itemgetter(1), values))) for k, values in
+        groupby(
+            chain.from_iterable(map(dict.items, (fst, snd, *other))),
+            key=itemgetter(0)
+        )
     }
 
 
