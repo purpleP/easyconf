@@ -5,7 +5,7 @@ from setuptools import setup
 
 setup(
     name='easyconf',
-    version='1.1',
+    version='1.2',
     author='Michael Doronin',
     author_email='warrior2031@mail.com',
     install_requires=['jsonschema', 'split>=1.0'],
